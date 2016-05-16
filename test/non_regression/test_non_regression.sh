@@ -139,14 +139,14 @@ fi
 # run without valgrind
 run_test_without_valgrind ${CMD} || exit $?
 
+# tests with 1.6.x compat or Valgrind are no possible in the Linux kernel
+[ -n "${KERNEL_SUFFIX}" ] && exit 0
+
 # run without valgrind
 run_test_without_valgrind ${CMD2} || exit $?
 
 # skip Valgrind tests if they are not enabled
 [ "${USE_VALGRIND}" != "yes" ] && exit 0
-
-# tests with Valgrind are not possible in the Linux kernel
-[ -n "${KERNEL_SUFFIX}" ] && exit 0
 
 # run with valgrind in verbose mode or quiet mode
 run_test_with_valgrind ${BASEDIR}/../valgrind.xsl ${CMD} || exit $?

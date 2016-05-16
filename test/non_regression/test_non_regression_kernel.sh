@@ -4,16 +4,21 @@
 # description: Check that the behaviour of the ROHC library did not changed
 #              without developpers noticing it (in Linux kernel).
 # authors:     Didier Barvaux <didier.barvaux@toulouse.viveris.com>
+#              Didier Barvaux <didier@barvaux.org>
 #
 
-for testfile in ./test/non_regression/test_non_regression_*_smallcid.sh ; do
+cur_dir="$( dirname "$0" )"
+tests_nr=0
+statuses=0
 
-	testname=$( basename ${testfile} "_smallcid.sh" )
+for testfile in $( ls -1 ${cur_dir}/test_non_regression_*_maxcontexts0_wlsb4_smallcid.sh | grep -v tcp ) ; do
 
-	echo -n "running ${testname}... "
+	echo -n "running ${testfile}... "
+	tests_nr=$(( ${tests_nr} + 1 ))
 
-	KERNEL_SUFFIX=_kernel ./${testfile}
+	KERNEL_SUFFIX=_kernel ./${testfile} &>/dev/null
 	ret=$?
+	statuses=$(( ${statuses} + ${ret} ))
 
 	if [ ${ret} -eq 0 ] ; then
 		echo "OK"
@@ -24,6 +29,8 @@ for testfile in ./test/non_regression/test_non_regression_*_smallcid.sh ; do
 	else
 		echo "ERROR (${ret})"
 	fi
-
 done
+
+echo "${tests_nr} tests performed, exiting with code ${statuses}"
+exit ${statuses}
 
