@@ -10,8 +10,15 @@ Release:  1.%{packager}
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-Source:   %{name}-%{version}.tar.bz2
-Source1:  %{name}-tests-%{version}.tar.bz2
+Source:   %{name}-%{version}.tar.xz
+
+# libpcap and cmocka required by unit tests
+BuildRequires: libcmocka-devel
+%if 0%{?rhel_version} >= 600
+BuildRequires: libpcap1-devel
+%else
+BuildRequires: libpcap-devel
+%endif
 
 %global _hardened_build 1
 
@@ -19,12 +26,12 @@ Source1:  %{name}-tests-%{version}.tar.bz2
 #  - RHEL >= 6
 #  - CentOS >= 6
 #  - all others
-%if 0%{?rhel_version} || 0%{?centos_version}
+%if 0%{?rhel_version} || 0%{?centos_ver}
 # RHEL or CentOS
 %if 0%{?rhel_version} >= 600
 %define rohc_doc 1
 %else
-%if 0%{?centos_version} >= 600
+%if 0%{?centos_ver} >= 6
 %define rohc_doc 1
 %else
 %define rohc_doc 0
@@ -53,6 +60,8 @@ BuildRequires: libpcap1-devel
 Requires:      libpcap
 BuildRequires: libpcap-devel
 %endif
+# rohc_stats.sh uses gnuplot to draw graphs
+Requires:      gnuplot
 
 %description tools
 Miscellaneous tools that come along the ROHC library.
@@ -66,6 +75,7 @@ Summary:       Files for development of applications which will use the ROHC lib
 Group:         Development/Libraries
 BuildArch:     noarch
 Requires:      %{name} = %{epoch}:%{version}-%{release}
+BuildRequires: help2man
 
 %description devel
 Files for development of applications which will use the ROHC library.
@@ -74,21 +84,17 @@ The ROHC library implements the RObust Header Compression (ROHC)
 algorithms as defined by the IETF in RFC3095.
 
 
-%if %{rohc_doc}
 %package doc
 Summary:       API documentation of the ROHC library
 Group:         Development/Libraries
 BuildArch:     noarch
 Requires:      %{name} = %{epoch}:%{version}-%{release}
+%if %{rohc_doc}
 BuildRequires: doxygen
-BuildRequires: texlive-latex
 BuildRequires: graphviz
 %if 0%{?suse_version}
-BuildRequires: texlive-bin
 BuildRequires: graphviz-gd
 %endif
-%if 0%{?fedora} >= 18
-BuildRequires: texlive-latex-bin-bin
 %endif
 
 %description doc
@@ -96,39 +102,53 @@ API documentation of the ROHC library.
 
 The ROHC library implements the RObust Header Compression (ROHC)
 algorithms as defined by the IETF in RFC3095.
-%endif
 
 
 %prep
 # unpack sources
 %setup -q
-# unpack the PCAP captures needed for tests at the top level,
-# and do not remove previous sources
-%setup -q -T -D -b 1
 
 %build
+# configure for tools, doc and tests
 %configure \
-	--enable-fortify-sources \
-	--enable-fail-on-warning \
-	--enable-app-fuzzer \
 	--enable-app-performance \
 	--enable-app-sniffer \
-	--enable-app-tunnel \
-	--enable-rohc-tests \
+	--enable-app-stats \
 %if %{rohc_doc}
 	--enable-doc \
 %endif
-	--enable-examples
+	--enable-examples \
+	--enable-fail-on-warning \
+	--enable-fortify-sources \
+	--enable-rohc-tests \
+	--enable-shared \
+	--disable-static
 make clean
-make %{?_smp_mflags} all
+# build the library, tools and doc
+# disable some warnings on CentOS 6.x
+%if 0%{?centos_ver} == 06
+export MY_CFLAGS="-Wno-unreachable-code"
+%else
+export MY_CFLAGS=""
+%endif
+make %{?_smp_mflags} all CFLAGS="${CFLAGS} ${MY_CFLAGS}"
 
 %check
-make %{?_smp_mflags} check
+# build and run tests
+# disable some warnings on CentOS 6.x
+%if 0%{?centos_ver} == 06
+export MY_CFLAGS="-Wno-unreachable-code"
+%else
+export MY_CFLAGS=""
+%endif
+make %{?_smp_mflags} check CFLAGS="${CFLAGS} ${MY_CFLAGS}"
 
 %install
 rm -rf %{buildroot}
+# install library, tools and doc
 make install DESTDIR=%{buildroot}
-rm -f %{buildroot}/%{_libdir}/librohc{,_common,_comp,_decomp}.la
+# remove useless libtool .la file
+rm -f %{buildroot}/%{_libdir}/librohc.la
 
 %clean
 rm -rf %{buildroot}
@@ -140,30 +160,33 @@ rm -rf %{buildroot}
 %defattr(0644, root, root, 0755)
 # libraries
 %{_libdir}/librohc.so
-%{_libdir}/librohc.so.0
-%{_libdir}/librohc.so.0.2.0
-%{_libdir}/librohc_common.so
-%{_libdir}/librohc_common.so.0
-%{_libdir}/librohc_common.so.0.2.0
-%{_libdir}/librohc_comp.so
-%{_libdir}/librohc_comp.so.0
-%{_libdir}/librohc_comp.so.0.2.0
-%{_libdir}/librohc_decomp.so
-%{_libdir}/librohc_decomp.so.0
-%{_libdir}/librohc_decomp.so.0.2.0
+%{_libdir}/librohc.so.3
+%{_libdir}/librohc.so.3.0.0
 # basic documentation
 %dir %{_defaultdocdir}/%{name}/
+%{_docdir}/%{name}/AUTHORS.md
 %{_docdir}/%{name}/AUTHORS
 %{_docdir}/%{name}/COPYING
 %{_docdir}/%{name}/ChangeLog
+%{_docdir}/%{name}/INSTALL.md
 %{_docdir}/%{name}/INSTALL
+%{_docdir}/%{name}/README.md
 %{_docdir}/%{name}/README
+# general man pages
+%{_mandir}/man7/rohc.7.gz
+%{_mandir}/man7/rohc_protocol.7.gz
+%{_mandir}/man7/rohc_library.7.gz
 
 %files tools
 %defattr(0644, root, root, 0755)
 # library tools
-%{_sbindir}/rohc_test_performance
-%{_sbindir}/rohctunnel
+%{_bindir}/rohc_test_performance
+%{_bindir}/rohc_gen_stream
+%{_bindir}/rohc_stats
+%{_bindir}/rohc_stats.sh
+%{_sbindir}/rohc_sniffer
+# tools man pages
+%{_mandir}/man1/*.1.gz
 
 %files devel
 %defattr(0644, root, root, 0755)
@@ -172,31 +195,33 @@ rm -rf %{buildroot}
 # library headers
 %dir %{_includedir}/%{name}/
 %{_includedir}/%{name}/rohc.h
+%{_includedir}/%{name}/rohc_buf.h
 %{_includedir}/%{name}/rohc_comp.h
 %{_includedir}/%{name}/rohc_decomp.h
 %{_includedir}/%{name}/rohc_packets.h
+%{_includedir}/%{name}/rohc_time.h
 %{_includedir}/%{name}/rohc_traces.h
-# deprecated library headers
-%{_includedir}/rohc.h
-%{_includedir}/rohc_comp.h
-%{_includedir}/rohc_decomp.h
-%{_includedir}/rohc_packets.h
-%{_includedir}/rohc_traces.h
 # code examples
 %dir %{_docdir}/%{name}/
 %dir %{_docdir}/%{name}/examples/
-%{_docdir}/%{name}/examples/simple_rohc_program.c
+%{_docdir}/%{name}/examples/*.c
 
-%if %{rohc_doc}
 %files doc
 %defattr(0644, root, root, 0755)
 # doxygen documentation in HTML format
+%if %{rohc_doc}
 %dir %{_docdir}/%{name}/
 %dir %{_docdir}/%{name}/html/
 %{_docdir}/%{name}/html/*
 %endif
+# man pages for development
+%{_mandir}/man3/*.3.gz
 
 %changelog
+* Sat Jun 25 2016 Didier Barvaux <didier@barvaux.org>
+- Remove deprecated tunnel and fuzzer apps
+- Install man pages
+- Remove now useless latex dependency for doc
 * Mon May 20 2013 Didier Barvaux <didier@barvaux.org>
 - Replace --enable-rohc-apps by --enable-app-fuzzer --enable-app-tunnel
   --enable-app-performance --enable-app-sniffer.
