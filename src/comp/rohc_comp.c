@@ -2432,8 +2432,9 @@ static struct rohc_comp_ctxt *
 			continue;
 		}
 
-		/* don't look at contexts with the wrong key */
-		if(packet->key != context->key)
+		/* don't look at contexts with the wrong key
+		 * (except for the Uncompressed profile) */
+		if(profile->id != ROHC_PROFILE_UNCOMPRESSED && packet->key != context->key)
 		{
 			continue;
 		}

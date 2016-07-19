@@ -26,6 +26,8 @@
 #include "net_pkt.h"
 
 #include "protocols/ip_numbers.h"
+#include "protocols/tcp.h"
+#include "protocols/udp.h"
 #include "rohc_traces_internal.h"
 
 
@@ -91,6 +93,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 	{
 		const struct ipv6_addr *const saddr = ipv6_get_saddr(&packet->outer_ip);
 		const struct ipv6_addr *const daddr = ipv6_get_daddr(&packet->outer_ip);
+		const uint32_t flow_label = ip_get_flow_label(&packet->outer_ip);
 		packet->key ^= saddr->u32[0];
 		packet->key ^= saddr->u32[1];
 		packet->key ^= saddr->u32[2];
@@ -99,6 +102,7 @@ bool net_pkt_parse(struct net_pkt *const packet,
 		packet->key ^= daddr->u32[1];
 		packet->key ^= daddr->u32[2];
 		packet->key ^= daddr->u32[3];
+		packet->key ^= flow_label;
 	}
 
 	/* get the transport protocol */
@@ -132,8 +136,61 @@ bool net_pkt_parse(struct net_pkt *const packet,
 			}
 		}
 
+		/* complete the hash key for the packet */
+		if(ip_get_version(&packet->inner_ip) == IPV4)
+		{
+			packet->key ^= ipv4_get_saddr(&packet->inner_ip);
+			packet->key ^= ipv4_get_daddr(&packet->inner_ip);
+		}
+		else if(ip_get_version(&packet->inner_ip) == IPV6)
+		{
+			const struct ipv6_addr *const saddr = ipv6_get_saddr(&packet->inner_ip);
+			const struct ipv6_addr *const daddr = ipv6_get_daddr(&packet->inner_ip);
+			const uint32_t flow_label = ip_get_flow_label(&packet->inner_ip);
+			packet->key ^= saddr->u32[0];
+			packet->key ^= saddr->u32[1];
+			packet->key ^= saddr->u32[2];
+			packet->key ^= saddr->u32[3];
+			packet->key ^= daddr->u32[0];
+			packet->key ^= daddr->u32[1];
+			packet->key ^= daddr->u32[2];
+			packet->key ^= daddr->u32[3];
+			packet->key ^= flow_label;
+		}
+
 		/* get the transport protocol */
 		packet->transport = &packet->inner_ip.nl;
+	}
+
+	switch(packet->transport->proto)
+	{
+		case ROHC_IPPROTO_TCP:
+		{
+			if(packet->transport->len >= sizeof(struct tcphdr))
+			{
+				const struct tcphdr *const tcp_hdr =
+					(const struct tcphdr *const) packet->transport->data;
+				packet->key ^= tcp_hdr->src_port;
+				packet->key ^= tcp_hdr->dst_port;
+			}
+			break;
+		}
+		case ROHC_IPPROTO_UDP:
+		{
+			if(packet->transport->len >= sizeof(struct udphdr))
+			{
+				const struct udphdr *const udp_hdr =
+					(const struct udphdr *const ) packet->transport->data;
+				packet->key ^= udp_hdr->source;
+				packet->key ^= udp_hdr->dest;
+			}
+			break;
+		}
+		default:
+		{
+			/* no additional bits for key */
+			break;
+		}
 	}
 
 	return true;
