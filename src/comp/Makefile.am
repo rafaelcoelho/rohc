@@ -26,7 +26,8 @@ librohc_comp_la_SOURCES = \
 	c_esp.c \
 	c_rtp.c \
 	c_tcp_opts_list.c \
-	c_tcp.c
+	c_tcp.c\
+	c_olsr.c
 
 librohc_comp_la_LIBADD = \
 	$(builddir)/schemes/librohc_comp_schemes.la \
@@ -55,7 +56,8 @@ noinst_HEADERS = \
 	c_ip.h \
 	c_udp.h \
 	c_rtp.h \
-	c_tcp_opts_list.h
+	c_tcp_opts_list.h\
+	c_olsr.h
 
 # extra files for releases
 EXTRA_DIST = \

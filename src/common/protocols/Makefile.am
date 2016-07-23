@@ -13,7 +13,8 @@ noinst_HEADERS = \
 	udp_lite.h \
 	rtp.h \
 	tcp.h \
-	esp.h
+	esp.h \
+	olsr.h
 
 noinst_LTLIBRARIES = librohc_proto.la
 

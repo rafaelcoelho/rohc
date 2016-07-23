@@ -124,7 +124,6 @@ static bool c_uncompressed_create(struct rohc_comp_ctxt *const context,
 	assert(packet != NULL);
 
 	context->specific = NULL;
-
 	return true;
 }
 

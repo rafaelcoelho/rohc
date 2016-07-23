@@ -47,7 +47,7 @@
  */
 
 /** The number of ROHC profiles ready to be used */
-#define C_NUM_PROFILES 7U
+#define C_NUM_PROFILES 8U
 
 /** The default maximal number of packets sent in > IR states (= FO and SO
  *  states) before changing back the state to IR (periodic refreshes) */

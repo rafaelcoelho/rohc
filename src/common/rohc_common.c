@@ -165,6 +165,8 @@ const char * rohc_get_profile_descr(const rohc_profile_t profile)
 			return "IP/UDP-Lite/RTP";
 		case ROHC_PROFILE_UDPLITE:
 			return "IP/UDP-Lite";
+		case ROHC_PROFILE_OLSR:
+		      return "IP/OLSR";
 		case ROHC_PROFILE_MAX:
 		default:
 			return "no description";

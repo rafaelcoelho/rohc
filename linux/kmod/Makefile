@@ -43,6 +43,7 @@ rohc_comp_sources = \
 	../../src/comp/c_udp.c \
 	../../src/comp/c_udp_lite.c \
 	../../src/comp/c_rtp.c \
+	../../src/comp/c_olsr.c \
 	../../src/comp/c_esp.c \
 	../../src/comp/c_tcp_opts_list.c \
 	../../src/comp/c_tcp.c
