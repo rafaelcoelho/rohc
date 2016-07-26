@@ -61,6 +61,7 @@
 
 #ifndef __KERNEL__
 #  include <string.h>
+#include <stdio.h>
 #endif
 #include <stdlib.h>
 #ifdef __KERNEL__
@@ -114,6 +115,13 @@ static const struct rohc_comp_profile *
 	                          const struct net_pkt *const packet)
 	__attribute__((warn_unused_result, nonnull(1, 2)));
 
+static void rohc_comp_print_trace_default(void *const priv_ctxt,
+                                          const rohc_trace_level_t level,
+                                          const rohc_trace_entity_t entity,
+                                          const int profile,
+                                          const char *const format,
+                                          ...)
+        __attribute__((format(printf, 5, 6), nonnull(5)));
 
 /*
  * Prototypes of private functions related to ROHC compression contexts
@@ -340,6 +348,15 @@ struct rohc_comp * rohc_comp_new2(const rohc_cid_type_t cid_type,
 	{
 		goto destroy_comp;
 	}
+
+#if !defined(ROHC_ENABLE_DEPRECATED_API) || ROHC_ENABLE_DEPRECATED_API == 1
+        /* keep same behaviour as previous 1.x.y versions: traces on by default */
+        is_fine = rohc_comp_set_traces_cb2(comp, rohc_comp_print_trace_default, NULL);
+        if(is_fine != true)
+        {
+                goto destroy_comp;
+        }
+#endif
 
 	return comp;
 
@@ -3098,3 +3115,29 @@ error:
 	return false;
 }
 
+static void rohc_comp_print_trace_default(void *const priv_ctxt,
+                                          const rohc_trace_level_t level __attribute__((unused)),
+                                          const rohc_trace_entity_t entity __attribute__((unused)),
+                                          const int profile __attribute__((unused)),
+                                          const char *const format,
+                                          ...)
+{
+#ifndef __KERNEL__ /* TODO */
+        va_list args;
+#ifndef __KERNEL__
+        static bool first_time = true;
+
+        /* display a warning with the first message */
+        if(first_time)
+        {
+                printf("please define a callback for compressor traces\n");
+                first_time = false;
+        }
+#endif
+        assert(priv_ctxt == NULL);
+
+        va_start(args, format);
+        vfprintf(stdout, format, args);
+        va_end(args);
+#endif
+}
